@@ -1,0 +1,111 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Adeje & Taucho Ops – Webcams Map</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
+<style>
+  html, body { height: 100%; margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; }
+  #map { height: 100%; width: 100%; }
+  .panel {
+    position: absolute; top: 10px; left: 10px; z-index: 1000;
+    background: rgba(255,255,255,0.96); padding: 12px 14px; border-radius: 12px;
+    max-width: 340px; box-shadow: 0 6px 18px rgba(0,0,0,0.15);
+  }
+  .panel h3 { margin: 0 0 6px 0; font-size: 16px; }
+  .small { font-size: 12px; color: #666; }
+  .panel input { width: 100%; padding: 6px 8px; margin-bottom: 6px; border-radius: 6px; border: 1px solid #ddd; }
+  .chips { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:8px; }
+  .chip { border:1px solid #ddd; border-radius:999px; padding:4px 10px; font-size:12px; cursor:pointer; }
+  .panel ul { list-style: none; padding: 0; margin: 0; max-height: 180px; overflow-y: auto; }
+  .panel li { padding: 5px 0; border-bottom: 1px solid #eee; }
+  .panel a { text-decoration: none; font-weight: 600; color: #0366d6; }
+  .box { margin-top:10px; padding-top:8px; border-top:1px solid #eee; }
+</style>
+</head>
+<body>
+<div id="map"></div>
+
+<div class="panel">
+  <h3>Webcams</h3>
+  <input id="q" placeholder="Search webcams..." oninput="filterList(this.value)" />
+  <div class="chips">
+    <label class="chip"><input id="opsToggle" type="checkbox" checked style="margin-right:6px">Taucho ops only</label>
+  </div>
+  <ul id="list"></ul>
+
+  <div class="box">
+    <h3>Paragliding & weather</h3>
+    <ul>
+      <li><a href='https://www.windfinder.com/forecast/taucho' target='_blank' rel='noopener'>Windfinder – Taucho forecast</a></li><li><a href='https://en.windfinder.com/webcams/taucho' target='_blank' rel='noopener'>Windfinder – Taucho webcams map</a></li><li><a href='https://www.paraglidingmap.com/launches/taucho' target='_blank' rel='noopener'>Paragliding Map – Taucho launch</a></li><li><a href='https://www.webtenerife.co.uk/what-to-do/sports/air/paragliding/taucho-adeje/' target='_blank' rel='noopener'>Tenerife Tourism – Taucho site info</a></li><li><a href='https://www.webtenerife.co.uk/what-to-do/sports/air/paragliding/ifonche-vilaflor/' target='_blank' rel='noopener'>Ifonche site info (Tenerife Tourism)</a></li>
+    </ul>
+    <div class="small">Tip: Ajabo, La Enramada, Las Galgas, Golf Adeje are great coastal indicators for Taucho conditions.</div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+<script>
+  const WEBCAMS = [{"name": "Playa del Duque (Skyline)", "lat": 28.0914, "lon": -16.7439, "url": "https://www.skylinewebcams.com/en/webcam/espana/canarias/santa-cruz-de-tenerife/playa-del-duque.html", "area": "Adeje"}, {"name": "Playa del Duque \u2013 El Beril (Skyline)", "lat": 28.0935, "lon": -16.7505, "url": "https://www.skylinewebcams.com/en/webcam/espana/canarias/santa-cruz-de-tenerife/playa-del-duque-el-beril.html", "area": "Adeje"}, {"name": "Playa de Fa\u00f1ab\u00e9 (Skyline)", "lat": 28.08495, "lon": -16.73697, "url": "https://www.skylinewebcams.com/en/webcam/espana/canarias/santa-cruz-de-tenerife/playa-de-fanabe.html", "area": "Adeje"}, {"name": "Playa de Torviscas (Index)", "lat": 28.08231, "lon": -16.73616, "url": "https://worldcam.eu/webcams/africa/canary-islands/32119-tenerife-costa-adeje-playa-de-torviscas", "area": "Adeje"}, {"name": "Playa La Pinta (Skyline)", "lat": 28.0798185, "lon": -16.7353506, "url": "https://www.skylinewebcams.com/en/webcam/espana/canarias/santa-cruz-de-tenerife/playa-la-pinta.html", "area": "Adeje"}, {"name": "Playa del Bobo (Skyline)", "lat": 28.0796, "lon": -16.7336, "url": "https://www.skylinewebcams.com/en/webcam/espana/canarias/santa-cruz-de-tenerife/playa-del-bobo.html", "area": "Adeje"}, {"name": "El Duque Norte (Costa Adeje)", "lat": 28.095, "lon": -16.7467, "url": "https://costa-adeje.es/en/webcams/el-duque-norte", "area": "Adeje"}, {"name": "La Caleta - Playa La Enramada (Skyline)", "lat": 28.0983472222, "lon": -16.7521944444, "url": "https://www.skylinewebcams.com/en/webcam/espana/canarias/santa-cruz-de-tenerife/la-caleta-costa-adeje.html", "area": "La Caleta"}, {"name": "Golf Costa Adeje (Skyline)", "lat": 28.1032, "lon": -16.7496, "url": "https://www.skylinewebcams.com/en/webcam/espana/canarias/santa-cruz-de-tenerife/golf-costa-adeje.html", "area": "La Caleta", "ops": "Taucho ops"}, {"name": "Playa Para\u00edso \u2013 Las Galgas (WhatsUpCams)", "lat": 28.1185, "lon": -16.7779, "url": "https://www.whatsupcams.com/en/webcams/spain/canary-islands/tenerife/live-webcam-playa-de-las-galgas-playa-paraiso-la-gomera-island-adeje-tenerife/", "area": "Playa Para\u00edso", "ops": "Taucho ops"}, {"name": "Callao Salvaje \u2013 Playa de Ajabo (Skyline)", "lat": 28.1229, "lon": -16.7934, "url": "https://www.skylinewebcams.com/en/webcam/espana/canarias/santa-cruz-de-tenerife/callao-salvaje.html", "area": "Callao Salvaje", "ops": "Taucho ops"}, {"name": "Playa de Las Vistas \u2013 Los Cristianos (Skyline)", "lat": 28.0526061111, "lon": -16.7247833333, "url": "https://www.skylinewebcams.com/en/webcam/espana/canarias/santa-cruz-de-tenerife/playa-las-vistas.html", "area": "Los Cristianos"}, {"name": "Playa de Los Cristianos (Skyline)", "lat": 28.0557, "lon": -16.7205, "url": "https://www.skylinewebcams.com/en/webcam/espana/canarias/santa-cruz-de-tenerife/playa-los-cristianos.html", "area": "Los Cristianos"}, {"name": "Bah\u00eda de Los Cristianos \u2013 Costamar (Skyline)", "lat": 28.049, "lon": -16.7169, "url": "https://www.skylinewebcams.com/en/webcam/espana/canarias/santa-cruz-de-tenerife/bahia-los-cristianos.html", "area": "Los Cristianos"}, {"name": "Playa de Troya (Skyline)", "lat": 28.058056, "lon": -16.735556, "url": "https://www.skylinewebcams.com/en/webcam/espana/canarias/santa-cruz-de-tenerife/playa-troya.html", "area": "Las Am\u00e9ricas"}, {"name": "Puerto de Santiago \u2013 Playa La Arena area (Skyline)", "lat": 28.222, "lon": -16.844, "url": "https://www.skylinewebcams.com/en/webcam/espana/canarias/santa-cruz-de-tenerife/santiago-del-teide-puerto-de-santiago.html", "area": "Puerto de Santiago"}, {"name": "Los Gigantes Cliffs & Marina (Skyline)", "lat": 28.243, "lon": -16.853, "url": "https://www.skylinewebcams.com/en/webcam/espana/canarias/santa-cruz-de-tenerife/los-gigantes.html", "area": "Los Gigantes"}, {"name": "El M\u00e9dano Beach (Skyline)", "lat": 28.0458, "lon": -16.536, "url": "https://www.skylinewebcams.com/en/webcam/espana/canarias/santa-cruz-de-tenerife/playa-de-el-medano.html", "area": "El M\u00e9dano"}, {"name": "El M\u00e9dano \u2013 Surf & Kitesurf (Skyline)", "lat": 28.0469, "lon": -16.533, "url": "https://www.skylinewebcams.com/en/webcam/espana/canarias/santa-cruz-de-tenerife/surf-kitesurf-medano.html", "area": "El M\u00e9dano"}, {"name": "Karting Club Tenerife \u2013 Las Chafiras (Skyline)", "lat": 28.0629, "lon": -16.6078, "url": "https://www.skylinewebcams.com/en/webcam/espana/canarias/santa-cruz-de-tenerife/karting-club-tenerife.html", "area": "Las Chafiras", "ops": "Taucho ops"}, {"name": "HOVIMA Costa Adeje \u2013 Pool/Sea (WebcamTaxi)", "lat": 28.0815, "lon": -16.7324, "url": "https://www.webcamtaxi.com/en/spain/tenerife/pool-hovima-costa-adeje.html", "area": "Adeje"}];
+
+  const map = L.map('map');
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '&copy; OpenStreetMap contributors'
+  }).addTo(map);
+
+  const markers = L.markerClusterGroup();
+  const markerIndex = new Map();
+
+  function addMarkers(opsOnly) {
+    markers.clearLayers();
+    WEBCAMS.forEach(w => {
+      if (opsOnly && !w.ops) return;
+      const m = L.marker([w.lat, w.lon]).bindPopup(`<strong>${w.name}</strong><br><span class='small'>${w.area}{w.ops ? " • Taucho ops" : ""}</span><br><a href='${w.url}' target='_blank' rel='noopener'>Open live webcam</a>`);
+      markers.addLayer(m);
+      markerIndex.set(w.name, m);
+    });
+    if (!map.hasLayer(markers)) map.addLayer(markers);
+  }
+
+  function fitAll(opsOnly) {
+    const pts = WEBCAMS.filter(w => !opsOnly || w.ops).map(w => [w.lat, w.lon]);
+    if (pts.length) map.fitBounds(L.latLngBounds(pts), {padding:[20,20]});
+  }
+
+  addMarkers(false);
+  fitAll(false);
+
+  const listEl = document.getElementById('list');
+  const opsToggle = document.getElementById('opsToggle');
+
+  function renderList(filter='') {
+    const q = filter.toLowerCase();
+    const opsOnly = opsToggle.checked;
+    listEl.innerHTML = WEBCAMS
+      .filter(w => !opsOnly || w.ops)
+      .filter(w => !q || w.name.toLowerCase().includes(q) || w.area.toLowerCase().includes(q))
+      .map(w => `<li><a href="#" onclick="flyTo(${w.lat},${w.lon});return false;">${w.name}</a> <span class='small'>(${w.area}${w.ops ? " • Taucho ops" : ""})</span></li>`)
+      .join('');
+  }
+  renderList();
+
+  function filterList(q) { renderList(q); }
+  opsToggle.addEventListener('change', () => { addMarkers(opsToggle.checked); fitAll(opsToggle.checked); renderList(document.getElementById('q').value); });
+
+  window.flyTo = (lat, lon) => {
+    map.flyTo([lat, lon], 16, {duration:0.8});
+    setTimeout(() => {
+      markers.eachLayer(layer => {
+        const ll = layer.getLatLng();
+        if (Math.abs(ll.lat-lat)<1e-6 && Math.abs(ll.lng-lon)<1e-6) layer.openPopup();
+      });
+    }, 900);
+  }
+</script>
+</body>
+</html>
