@@ -16,52 +16,61 @@
   }
   html, body { height: 100%; margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; }
   #map { height: 100%; width: 100%; }
-  /* Mobile-first overlay panel */
+
+  /* Floating toggle button (always visible, mobile & desktop) */
   .fab {
     position: fixed; right: 14px; bottom: 14px; z-index: 1100;
-    width: 54px; height: 54px; border-radius: 50%; border: none;
+    width: 56px; height: 56px; border-radius: 50%; border: none;
     box-shadow: var(--shadow); background: #111827; color: #fff; font-size: 24px;
   }
+
+  /* Backdrop + sliding sheet */
   .overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.35); backdrop-filter: blur(1px); z-index: 1000; display: none; }
   .sheet {
     position: fixed; left: 0; right: 0; bottom: 0; z-index: 1001;
     background: var(--panel-bg); border-top-left-radius: 16px; border-top-right-radius: 16px;
     box-shadow: var(--shadow);
-    transform: translateY(100%); transition: transform 0.3s ease;
+    transform: translateY(100%); transition: transform 0.28s ease;
     max-height: 80vh; display: flex; flex-direction: column;
   }
   .sheet.open { transform: translateY(0); }
   .overlay.open { display: block; }
   .grip { width: 48px; height: 5px; background:#d1d5db; border-radius: 999px; margin: 8px auto; }
   .sheet-content { padding: 10px 14px 14px; overflow: auto; }
-  .h {
-    margin: 0 0 6px 0; font-size: 16px; display:flex; align-items:center; justify-content: space-between;
-  }
+
+  .h { margin: 0 0 6px 0; font-size: 16px; display:flex; align-items:center; justify-content: space-between; }
   .row { display:flex; gap:8px; align-items:center; margin-bottom:8px; }
   .input { flex:1; min-width:140px; padding:8px 10px; border-radius:8px; border:1px solid var(--border); }
   .chip { border:1px solid var(--border); border-radius:999px; padding:6px 10px; font-size:12px; cursor:pointer; user-select:none; }
   .list { list-style:none; padding:0; margin:0; }
   .item { padding:8px 0; border-bottom:1px solid var(--border); }
   .item a { text-decoration:none; font-weight:600; color:#0366d6; }
-  /* Desktop: show panel on the left like before */
+  .muted { color:#6b7280; font-size:12px; }
+
+  /* Desktop layout: sheet slides from the left instead of bottom */
   @media (min-width: 900px) {
-    .fab, .overlay { display: none !important; }
-    .sheet { position:absolute; top:10px; left:10px; right:auto; bottom:auto; max-height:70vh; width:360px; transform:none; }
-    .grip { display:none; }
+    .sheet {
+      top: 10px; bottom: auto; left: 10px; right: auto;
+      width: 380px; max-height: 80vh;
+      border-radius: 14px;
+      transform: translateX(-110%); /* hidden left */
+    }
+    .sheet.open { transform: translateX(0); }
+    .grip { display: none; }
   }
-  /* Accordion */
+
+  /* Accordions */
   details { border:1px solid var(--border); border-radius:10px; padding:8px 10px; margin:10px 0; background: #fff; }
   summary { cursor:pointer; font-weight:700; }
   summary::marker { content: ''; }
   summary::after { content: '▾'; float:right; }
   details[open] summary::after { content: '▴'; }
-  .muted { color:#6b7280; font-size:12px; }
 </style>
 </head>
 <body>
 <div id="map"></div>
 
-<button class="fab" id="fab" aria-label="Open menu" aria-expanded="false">☰</button>
+<button class="fab" id="fab" aria-label="Toggle menu" aria-expanded="false">☰</button>
 <div class="overlay" id="overlay" aria-hidden="true"></div>
 
 <div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="title">
@@ -122,18 +131,27 @@
   addMarkers(true);
   fitAll(true);
 
-  // UI logic
+  // UI toggle logic (mobile + desktop)
   const fab = document.getElementById('fab');
   const sheet = document.getElementById('sheet');
   const overlay = document.getElementById('overlay');
   const closeBtn = document.getElementById('closeBtn');
-  function openSheet() { sheet.classList.add('open'); overlay.classList.add('open'); overlay.setAttribute('aria-hidden','false'); fab.setAttribute('aria-expanded','true'); }
-  function closeSheet() { sheet.classList.remove('open'); overlay.classList.remove('open'); overlay.setAttribute('aria-hidden','true'); fab.setAttribute('aria-expanded','false'); }
-  fab.addEventListener('click', openSheet);
+  function openSheet() {
+    sheet.classList.add('open'); overlay.classList.add('open');
+    overlay.setAttribute('aria-hidden','false'); fab.setAttribute('aria-expanded','true');
+  }
+  function closeSheet() {
+    sheet.classList.remove('open'); overlay.classList.remove('open');
+    overlay.setAttribute('aria-hidden','true'); fab.setAttribute('aria-expanded','false');
+  }
+  function toggleSheet() { sheet.classList.contains('open') ? closeSheet() : openSheet(); }
+
+  fab.addEventListener('click', toggleSheet);
   closeBtn.addEventListener('click', closeSheet);
   overlay.addEventListener('click', closeSheet);
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeSheet(); });
 
-  // Drag-to-close hint (grip)
+  // Drag-to-close on mobile grip
   let startY = null;
   document.getElementById('grip').addEventListener('touchstart', e => { startY = e.touches[0].clientY; });
   document.getElementById('grip').addEventListener('touchmove', e => {
